@@ -1,5 +1,4 @@
 package com.enseniamelo.usuarios.config;
-
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +34,7 @@ public class MessageProcessorConfig {
     }
 
 
-    @Bean
+    @Bean   
     public Consumer<Event<Integer, UsuarioDTO>> usuarioProcessor() {
         return event -> {
             LOGGER.info("📨 [USUARIO] Evento: tipo={}, id={}", 
