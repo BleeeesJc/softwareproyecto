@@ -1,0 +1,184 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  
+  # ============ OAUTH2 CONFIGURATION ============
+  security:
+    oauth2:
+      # Resource Server: valida tokens JWT de Keycloak
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/enseniamelo-realm
+          jwk-set-uri: http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/certs
+      
+      # Client: para el flujo de login (opcional si usas tu propio sistema)
+      client:
+        provider:
+          keycloak:
+            issuer-uri: http://keycloak:8080/realms/enseniamelo-realm
+            authorization-uri: http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/auth
+            token-uri: http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/token
+            user-info-uri: http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/userinfo
+            jwk-set-uri: http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/certs
+            user-name-attribute: preferred_username
+        
+        registration:
+          keycloak:
+            provider: keycloak
+            client-id: gateway-client
+            client-secret: 4b98whamzW9QJ1DpVdrQwWtEqxSMVI3J 
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - openid
+              - profile
+              - email
+              - usuarios:read
+              - usuarios:write
+              - tutores:read
+              - tutores:write
+  
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      
+      # ============ FILTRO GLOBAL PARA PROPAGAR JWT ============
+      default-filters:
+        - TokenRelay=  # Propaga el token JWT a los microservicios
+      
+      routes:
+        # ============ RUTAS DIRECTAS V1 ============
+        - id: usuarios-v1-direct
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/v1/usuario,/v1/usuario/**,/v1/auth/**
+          order: 1
+        
+        - id: tutores-v1-direct
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/v1/tutores,/v1/tutores/**
+          order: 1
+        
+        - id: verificacion-v1-direct
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/v1/verificacion,/v1/verificacion/**
+          order: 1
+        
+        # ============ RUTAS CON PREFIJO /api/v1 ============
+        - id: usuarios-v1-api
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/api/v1/usuario,/api/v1/usuario/**,/api/v1/auth/**
+          filters:
+            - RewritePath=/api(?<segment>.*), $\{segment}
+          order: 1
+        
+        - id: tutores-v1-api
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/api/v1/tutores,/api/v1/tutores/**
+          filters:
+            - RewritePath=/api(?<segment>.*), $\{segment}
+          order: 1
+        
+        - id: verificacion-v1-api
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/api/v1/verificacion,/api/v1/verificacion/**
+          filters:
+            - RewritePath=/api(?<segment>.*), $\{segment}
+          order: 1
+        
+        # ============ SWAGGER/OPENAPI ============
+        - id: usuarios-openapi-swagger-ui
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/openapi/swagger-ui.html,/openapi/swagger-ui/**
+          order: 1
+        
+        - id: usuarios-openapi-docs
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/openapi/v3/api-docs,/openapi/v3/api-docs/**
+          order: 1
+        
+        # ============ SWAGGER/OPENAPI (Alias sin /openapi/) ============
+        - id: usuarios-swagger-ui-alias
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/swagger-ui.html,/swagger-ui/**
+          filters:
+            - RewritePath=/swagger-ui(?<segment>.*), /openapi/swagger-ui$\{segment}
+          order: 1
+        
+        - id: usuarios-api-docs-alias
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/v3/api-docs,/v3/api-docs/**
+          filters:
+            - RewritePath=/v3/api-docs(?<segment>.*), /openapi/v3/api-docs$\{segment}
+          order: 1
+        
+        - id: usuarios-webjars
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/webjars/**
+          order: 1
+
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: 
+              - "http://localhost:3000"
+              - "http://localhost:4200"
+              - "http://localhost:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://eureka-server:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    preferIpAddress: true
+    hostname: gateway-service
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,routes
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: TRACE
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    reactor.netty: INFO
