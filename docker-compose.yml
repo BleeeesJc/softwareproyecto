@@ -1,57 +1,6 @@
 version: '3.8'
 
 services:
-  # ============ KEYCLOAK SERVICES ============
-  postgres-keycloak:
-    image: postgres:15-alpine
-    container_name: postgres-keycloak
-    ports:
-      - "5433:5432"  # Cambié a 5433 para evitar conflicto con otro postgres
-    environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak
-    volumes:
-      - postgres-keycloak-data:/var/lib/postgresql/data
-    networks:
-      - microservices-net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keycloak"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ==================== KEYCLOAK ====================
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0.0
-    container_name: keycloak
-    depends_on:
-      postgres-keycloak:
-        condition: service_healthy
-    ports:
-      - "8180:8080"
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
-      KC_HOSTNAME_STRICT: false
-      KC_HTTP_ENABLED: true
-      KC_HEALTH_ENABLED: true
-      KC_METRICS_ENABLED: true
-    command: start-dev
-    networks:
-      - microservices-net
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
-
-  # ============ TUS SERVICIOS EXISTENTES ============
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
@@ -166,18 +115,13 @@ services:
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=guest
       - SPRING_RABBITMQ_PASSWORD=guest
-      # OAuth2 Configuration
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/enseniamelo-realm
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/certs
     depends_on:
       kafka:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
       rabbitmq:
-        condition: service_healthy
-      keycloak:
-        condition: service_healthy
+        condition: service_healthy  
     networks:
       - microservices-net
     healthcheck:
@@ -199,17 +143,10 @@ services:
       - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
       - SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_ENABLED=true
       - SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_LOWER_CASE_SERVICE_ID=true
-      # OAuth2 Configuration for Gateway
-      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/enseniamelo-realm
-      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI=http://keycloak:8080/realms/enseniamelo-realm
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_ID=gateway-client
-      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_SECRET=4b98whamzW9QJ1DpVdrQwWtEqxSMVI3J
     depends_on:
       eureka-server:
         condition: service_healthy
       usuarios:
-        condition: service_healthy
-      keycloak:
         condition: service_healthy
     networks:
       - microservices-net
@@ -229,4 +166,3 @@ volumes:
   zookeeper-logs:
   kafka-data:
   rabbitmq-data:
-  postgres-keycloak-data:

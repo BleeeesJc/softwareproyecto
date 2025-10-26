@@ -3,43 +3,7 @@ server:
 
 spring:
   application:
-    name: gateway-service
-  
-  # ============ OAUTH2 CONFIGURATION ============
-  security:
-    oauth2:
-      # Resource Server: valida tokens JWT de Keycloak
-      resourceserver:
-        jwt:
-          issuer-uri: http://keycloak:8080/realms/enseniamelo-realm
-          jwk-set-uri: http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/certs
-      
-      # Client: para el flujo de login (opcional si usas tu propio sistema)
-      client:
-        provider:
-          keycloak:
-            issuer-uri: http://keycloak:8080/realms/enseniamelo-realm
-            authorization-uri: http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/auth
-            token-uri: http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/token
-            user-info-uri: http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/userinfo
-            jwk-set-uri: http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/certs
-            user-name-attribute: preferred_username
-        
-        registration:
-          keycloak:
-            provider: keycloak
-            client-id: gateway-client
-            client-secret: 4b98whamzW9QJ1DpVdrQwWtEqxSMVI3J 
-            authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
-            scope:
-              - openid
-              - profile
-              - email
-              - usuarios:read
-              - usuarios:write
-              - tutores:read
-              - tutores:write
+    name: gateway-service  
   
   cloud:
     gateway:
@@ -48,56 +12,21 @@ spring:
           enabled: true
           lower-case-service-id: true
       
-      # ============ FILTRO GLOBAL PARA PROPAGAR JWT ============
-      default-filters:
-        - TokenRelay=  # Propaga el token JWT a los microservicios
-      
       routes:
-        # ============ RUTAS DIRECTAS V1 ============
         - id: usuarios-v1-direct
           uri: lb://usuarios-service
           predicates:
-            - Path=/v1/usuario,/v1/usuario/**,/v1/auth/**
+            - Path=/v1/usuario,/v1/usuario/**
           order: 1
         
-        - id: tutores-v1-direct
-          uri: lb://usuarios-service
-          predicates:
-            - Path=/v1/tutores,/v1/tutores/**
-          order: 1
-        
-        - id: verificacion-v1-direct
-          uri: lb://usuarios-service
-          predicates:
-            - Path=/v1/verificacion,/v1/verificacion/**
-          order: 1
-        
-        # ============ RUTAS CON PREFIJO /api/v1 ============
         - id: usuarios-v1-api
           uri: lb://usuarios-service
           predicates:
-            - Path=/api/v1/usuario,/api/v1/usuario/**,/api/v1/auth/**
+            - Path=/api/v1/usuario,/api/v1/usuario/**
           filters:
             - RewritePath=/api(?<segment>.*), $\{segment}
           order: 1
         
-        - id: tutores-v1-api
-          uri: lb://usuarios-service
-          predicates:
-            - Path=/api/v1/tutores,/api/v1/tutores/**
-          filters:
-            - RewritePath=/api(?<segment>.*), $\{segment}
-          order: 1
-        
-        - id: verificacion-v1-api
-          uri: lb://usuarios-service
-          predicates:
-            - Path=/api/v1/verificacion,/api/v1/verificacion/**
-          filters:
-            - RewritePath=/api(?<segment>.*), $\{segment}
-          order: 1
-        
-        # ============ SWAGGER/OPENAPI ============
         - id: usuarios-openapi-swagger-ui
           uri: lb://usuarios-service
           predicates:
@@ -180,5 +109,4 @@ logging:
     org.springframework.cloud.gateway: DEBUG
     org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: TRACE
     org.springframework.web: DEBUG
-    org.springframework.security: DEBUG
     reactor.netty: INFO
