@@ -23,9 +23,26 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeExchange(exchange -> exchange
+                // Permitir actuator health checks
                 .pathMatchers("/actuator/**").permitAll()
-                .pathMatchers("/openapi/**", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**").permitAll()
-                .pathMatchers("/v1/auth/login", "/v1/auth/register").permitAll()
+                
+                // Permitir Swagger UI y OpenAPI docs (acceso público)
+                .pathMatchers(
+                    "/openapi/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
+                    "/webjars/**",
+                    "/swagger-resources/**"
+                ).permitAll()
+                
+                // Permitir endpoints de autenticación (login, register)
+                .pathMatchers(
+                    "/v1/auth/login",
+                    "/v1/auth/register"
+                ).permitAll()
+                
+                // Todos los demás endpoints requieren autenticación
                 .anyExchange().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));

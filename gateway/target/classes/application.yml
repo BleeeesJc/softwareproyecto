@@ -24,7 +24,6 @@ spring:
         
         provider:
           keycloak:
-            
             authorization-uri: http://localhost:8180/realms/enseniamelo/protocol/openid-connect/auth
             token-uri: http://keycloak:8080/realms/enseniamelo/protocol/openid-connect/token
             user-info-uri: http://keycloak:8080/realms/enseniamelo/protocol/openid-connect/userinfo
@@ -43,7 +42,42 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        # ========== RUTAS PÚBLICAS (sin autenticación) ==========
+        # ========== RUTAS DE DOCUMENTACIÓN  ==========
+        - id: usuarios-openapi-swagger-ui
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/openapi/**
+          filters:
+            - RemoveRequestHeader=Authorization
+          order: -1
+        
+        - id: usuarios-swagger-ui-alias
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/swagger-ui.html,/swagger-ui/**
+          filters:
+            - RewritePath=/swagger-ui(?<segment>.*), /openapi/swagger-ui$\{segment}
+            - RemoveRequestHeader=Authorization
+          order: -1
+        
+        - id: usuarios-api-docs-alias
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/v3/api-docs,/v3/api-docs/**
+          filters:
+            - RewritePath=/v3/api-docs(?<segment>.*), /openapi/v3/api-docs$\{segment}
+            - RemoveRequestHeader=Authorization
+          order: -1
+        
+        - id: usuarios-webjars
+          uri: lb://usuarios-service
+          predicates:
+            - Path=/webjars/**
+          filters:
+            - RemoveRequestHeader=Authorization
+          order: -1
+        
+        # ========== RUTAS PÚBLICAS  ==========
         - id: auth-public
           uri: lb://usuarios-service
           predicates:
@@ -61,7 +95,7 @@ spring:
             - RemoveRequestHeader=Authorization
           order: 0
         
-        # ========== RUTAS PROTEGIDAS (con TokenRelay) ==========
+        # ========== RUTAS PROTEGIDAS  ==========
         - id: usuarios-v1-direct
           uri: lb://usuarios-service
           predicates:
@@ -104,37 +138,6 @@ spring:
             - TokenRelay=  
           order: 1
         
-        # ========== RUTAS DE DOCUMENTACIÓN (públicas) ==========
-        - id: usuarios-openapi-swagger-ui
-          uri: lb://usuarios-service
-          predicates:
-            - Path=/openapi/**
-          filters:
-            - RemoveRequestHeader=Authorization
-        
-        - id: usuarios-swagger-ui-alias
-          uri: lb://usuarios-service
-          predicates:
-            - Path=/swagger-ui.html,/swagger-ui/**
-          filters:
-            - RewritePath=/swagger-ui(?<segment>.*), /openapi/swagger-ui$\{segment}
-            - RemoveRequestHeader=Authorization
-        
-        - id: usuarios-api-docs-alias
-          uri: lb://usuarios-service
-          predicates:
-            - Path=/v3/api-docs,/v3/api-docs/**
-          filters:
-            - RewritePath=/v3/api-docs(?<segment>.*), /openapi/v3/api-docs$\{segment}
-            - RemoveRequestHeader=Authorization
-        
-        - id: usuarios-webjars
-          uri: lb://usuarios-service
-          predicates:
-            - Path=/webjars/**
-          filters:
-            - RemoveRequestHeader=Authorization
-        
         # ========== EUREKA ==========
         - id: eureka-web-start
           uri: http://eureka-server:8761
@@ -142,11 +145,13 @@ spring:
             - Path=/eureka/web
           filters:
             - SetPath=/
+          order: 2
         
         - id: eureka-web-other
           uri: http://eureka-server:8761
           predicates:
             - Path=/eureka/**
+          order: 2
 
       # ========== CORS ==========
       globalcors:
@@ -203,6 +208,6 @@ logging:
   level:
     root: INFO
     '[org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator]': INFO
-    '[org.springframework.cloud.gateway]': TRACE
+    '[org.springframework.cloud.gateway]': DEBUG
     '[org.springframework.security]': DEBUG
     '[org.springframework.security.oauth2]': DEBUG
