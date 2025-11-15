@@ -118,7 +118,7 @@ services:
       - microservices-net
 
   eureka-server:
-    build: ./eureka-server
+    image: local/enseniamelo-eureka-server:latest
     container_name: eureka-server
     ports:
       - "8761:8761"
@@ -152,30 +152,21 @@ services:
       retries: 5
 
   usuarios:
-    build: ./usuarios-service
+    image: local/enseniamelo-usuarios-service:latest
     container_name: usuarios-service
     ports:
       - "8081:8081"
     environment:
-      # MongoDB
       - SPRING_DATA_MONGODB_URI=mongodb+srv://jaredpimentel_db_user:DpCito170209@cluster0.cibyezm.mongodb.net/enseniamelo?retryWrites=true&w=majority
       - SPRING_DATA_MONGODB_DATABASE=enseniamelo
-      
-      # Kafka
       - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:29092
-      
-      # Eureka
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_APPLICATION_NAME=usuarios-service
       - EUREKA_INSTANCE_HOSTNAME=usuarios-service
-      
-      # RabbitMQ
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=guest
       - SPRING_RABBITMQ_PASSWORD=guest
-      
-      # OAuth2 / Keycloak - IMPORTANTE: usar keycloak:8080 dentro de Docker
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/enseniamelo-realm
       - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/enseniamelo-realm/protocol/openid-connect/certs
       
@@ -198,8 +189,11 @@ services:
       start_period: 60s 
     restart: on-failure
 
+  # ==========================================
+  # GATEWAY - Usando imagen pre-construida
+  # ==========================================
   gateway:
-    build: ./gateway  
+    image: local/enseniamelo-gateway:latest
     container_name: gateway-service  
     ports:
       - "8443:8443"
